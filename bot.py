@@ -27,7 +27,7 @@ def send_announcement(announcement: dict) -> None:
     )
 
     payload = {
-        "username": "Roblox DevForum 官方通知",
+        "username": "Roblox DevForum 官方公告",
         "embeds": [
             {
                 "title": translated_title[:256],
