@@ -3,7 +3,7 @@ name: Check Roblox DevForum announcements
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 * * * *" #每小時第17分執行一次
+    - cron: "17 * * * *"
 
 permissions:
   contents: read
