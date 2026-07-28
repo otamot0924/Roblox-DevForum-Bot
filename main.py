@@ -1,5 +1,5 @@
 from bot import send_announcement
-from crawler import (
+from scraper import (
     get_announcement_excerpt,
     get_latest_announcements,
 )
