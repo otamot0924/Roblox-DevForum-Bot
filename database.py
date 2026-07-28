@@ -1,64 +1,77 @@
-import sqlite3 #SQLite資料庫
+import os
 from datetime import datetime, timezone
-from pathlib import Path #處理檔案路徑
+
+import psycopg
+from dotenv import load_dotenv
 
 
-DATABASE_PATH = Path(__file__).parent / "notifications.db"
+load_dotenv()
 
-#資料庫連線
-def get_connection() -> sqlite3.Connection:
-    return sqlite3.connect(DATABASE_PATH)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-#初始化不回傳資料
+#取得資料庫連線
+def get_connection() -> psycopg.Connection:
+    if not DATABASE_URL:
+        raise RuntimeError("找不到 DATABASE_URL")
+
+    return psycopg.connect(DATABASE_URL)
+
+#初始化資料庫，建立必要的資料表
 def initialize_database() -> None:
     with get_connection() as connection:
-        #建立資料表，如果不存在的話
-        #ID當主鍵
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS sent_announcements (
-                topic_id INTEGER PRIMARY KEY,
-                title TEXT NOT NULL,
-                url TEXT NOT NULL,
-                sent_at TEXT NOT NULL
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS
+                sent_announcements (
+                    topic_id BIGINT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    url TEXT NOT NULL,
+                    sent_at TIMESTAMPTZ NOT NULL
+                )
+                """
             )
-            """
-        )
 
-#檢查公告是否已發送過
+#檢查公告是否已經發送過
 def is_announcement_sent(topic_id: int) -> bool:
     with get_connection() as connection:
-        #檢查資料表中是否存在該公告的ID
-        result = connection.execute(
-            """
-            SELECT 1
-            FROM sent_announcements
-            WHERE topic_id = ?
-            """,
-            (topic_id,),
-        ).fetchone() #取得第一筆結果
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 1
+                FROM sent_announcements
+                WHERE topic_id = %s
+                """,
+                (topic_id,),
+            )
+
+            result = cursor.fetchone()
 
     return result is not None
 
 #將公告標記為已發送
-def mark_announcement_as_sent(announcement: dict) -> None:
-    sent_at = datetime.now(timezone.utc).isoformat()
+def mark_announcement_as_sent(
+    announcement: dict,
+) -> None:
+    sent_at = datetime.now(timezone.utc)
 
     with get_connection() as connection:
-        connection.execute(
-            """
-            INSERT OR IGNORE INTO sent_announcements (
-                topic_id,
-                title,
-                url,
-                sent_at
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO sent_announcements (
+                    topic_id,
+                    title,
+                    url,
+                    sent_at
+                )
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (topic_id) DO NOTHING
+                """,
+                (
+                    announcement["id"],
+                    announcement["title"],
+                    announcement["url"],
+                    sent_at,
+                ),
             )
-            VALUES (?, ?, ?, ?)
-            """,
-            (
-                announcement["id"],
-                announcement["title"],
-                announcement["url"],
-                sent_at,
-            ),
-        )
