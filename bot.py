@@ -16,18 +16,33 @@ def send_announcement(announcement: dict) -> None:
     tags = announcement.get("tags", [])
     tags_text = ", ".join(tags) if tags else "無"
 
+    translated_title = announcement.get(
+        "translated_title",
+        announcement["title"],
+    )
+
+    translated_excerpt = announcement.get(
+        "translated_excerpt",
+        "目前沒有公告摘要。",
+    )
+
     payload = {
         "username": "Roblox DevForum 官方通知",
         "embeds": [
             {
-                "title": announcement["title"],
+                "title": translated_title[:256],
                 "url": announcement["url"],
-                "description": "Roblox Developer Forum 發布了新的官方公告。",
+                "description": translated_excerpt[:3500],
                 "color": 5793266,
                 "fields": [
                     {
+                        "name": "英文標題",
+                        "value": announcement["title"][:1024],
+                        "inline": False,
+                    },
+                    {
                         "name": "標籤",
-                        "value": tags_text,
+                        "value": tags_text[:1024],
                         "inline": True,
                     },
                     {
@@ -37,7 +52,10 @@ def send_announcement(announcement: dict) -> None:
                     },
                 ],
                 "footer": {
-                    "text": "來源：Roblox Developer Forum"
+                    "text": (
+                        "機器翻譯｜來源："
+                        "Roblox Developer Forum"
+                    )
                 },
                 "timestamp": announcement["created_at"],
             }
@@ -51,7 +69,7 @@ def send_announcement(announcement: dict) -> None:
     )
     response.raise_for_status()
 
-    print(f"已發送 Discord 通知：{announcement['title']}")
+    print(f"已發送 Discord 通知：{translated_title}")
 
 
 if __name__ == "__main__":

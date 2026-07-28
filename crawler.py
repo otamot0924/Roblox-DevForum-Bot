@@ -61,6 +61,83 @@ def get_latest_announcements(limit: int = 5) -> list[dict]:
 
     return announcements[:limit]
 
+def normalize_heading(text: str) -> str:
+    return text.strip().lower().rstrip(":")
+
+
+def find_key_takeaways_block(
+    soup: BeautifulSoup,
+):
+    accepted_headings = {
+        "key takeaway",
+        "key takeaways",
+    }
+
+    for blockquote in soup.find_all("blockquote"):
+        headings = blockquote.find_all(
+            [
+                "strong",
+                "b",
+                "h1",
+                "h2",
+                "h3",
+                "h4",
+                "p",
+            ]
+        )
+
+        for heading in headings:
+            heading_text = normalize_heading(
+                heading.get_text(" ", strip=True)
+            )
+
+            if heading_text in accepted_headings:
+                return blockquote
+
+    return None
+
+
+def remove_key_takeaways_heading(
+    soup: BeautifulSoup,
+) -> None:
+    accepted_headings = {
+        "key takeaway",
+        "key takeaways",
+    }
+
+    for heading in soup.find_all(
+        [
+            "strong",
+            "b",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "p",
+        ]
+    ):
+        heading_text = normalize_heading(
+            heading.get_text(" ", strip=True)
+        )
+
+        if heading_text not in accepted_headings:
+            continue
+
+        parent = heading.parent
+
+        # 常見結構是 <p><strong>Key Takeaways</strong></p>
+        if (
+            parent is not None
+            and parent.name == "p"
+            and parent.get_text(" ", strip=True)
+            == heading.get_text(" ", strip=True)
+        ):
+            parent.decompose()
+        else:
+            heading.decompose()
+
+        return
+
 #取得公告正文摘要
 def get_announcement_excerpt(
     announcement: dict,
@@ -88,13 +165,28 @@ def get_announcement_excerpt(
     first_post_html = posts[0]["cooked"]
     soup = BeautifulSoup(first_post_html, "html.parser")
 
-    # 移除不適合放進 Discord 摘要的內容
-    for element in soup(
+    key_takeaways_block = find_key_takeaways_block(soup)
+
+    if key_takeaways_block is None:
+        return "這篇公告沒有提供重點摘要。"
+
+    # 重新解析一份副本，避免修改原始 soup
+    block_copy = BeautifulSoup(
+        str(key_takeaways_block),
+        "html.parser",
+    )
+
+    remove_key_takeaways_heading(block_copy)
+
+    for element in block_copy(
         ["script", "style", "pre", "code", "img"]
     ):
         element.decompose()
 
-    text = soup.get_text(separator=" ", strip=True)
+    text = block_copy.get_text(
+        separator=" ",
+        strip=True,
+    )
     text = " ".join(text.split())
 
     if len(text) <= max_characters:
