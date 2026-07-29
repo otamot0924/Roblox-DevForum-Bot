@@ -6,11 +6,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DEEPL_API_KEY = os.getenv("DEEPL_API_KEY")
-DEEPL_API_URL = os.getenv(
-    "DEEPL_API_URL",
-    "https://api-free.deepl.com/v2/translate",
-)
+DEEPL_API_KEY = (
+    os.getenv("DEEPL_API_KEY") or ""
+).strip()
+
+DEEPL_API_URL = (
+    os.getenv(
+        "DEEPL_API_URL",
+        "https://api-free.deepl.com/v2/translate",
+    )
+    or ""
+).strip()
 
 
 def translate_text(

@@ -6,8 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-
+DISCORD_WEBHOOK_URL = (
+    os.getenv("DISCORD_WEBHOOK_URL") or ""
+).strip()
 
 def send_announcement(announcement: dict) -> None:
     if not DISCORD_WEBHOOK_URL:
